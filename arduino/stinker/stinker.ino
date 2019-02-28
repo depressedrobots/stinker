@@ -47,21 +47,24 @@ void loop()
   uint16_t ccs811TVOC = 0;
   readCCS811(ccs811Temp, ccs811CO2, ccs811TVOC);
 
-  float bmp280Temp = -1.f;
-  readBMP280(bmp280Temp);
+  float bmp280Temp     = -1.f;
+  float bmp280Pressure = -1.f;
+  readBMP280(bmp280Temp, bmp280Pressure);
 
+  Serial.print("hdc1080Temp: ");
+  Serial.println(hdc1080Temp);
+  Serial.print("bmp280Temp:  ");
+  Serial.println(bmp280Temp);
+  Serial.print("ccs811Temp:  ");
+  Serial.println(ccs811Temp);
   Serial.print("hdc1080Humidity: ");
   Serial.println(hdc1080Humidity);
-	Serial.print("hdc1080Temp: ");
-	Serial.println(hdc1080Temp);
-  Serial.print("bmp280Temp: ");
-  Serial.println(bmp280Temp);
-  Serial.print("ccs811Temp: ");
-  Serial.println(ccs811Temp);
-  Serial.print("ccs811CO2: ");
-  Serial.println(ccs811CO2);
+  Serial.print("bmp280Pressure:  ");
+  Serial.println(bmp280Pressure);
   Serial.print("ccs811TVOC: ");
   Serial.println(ccs811TVOC);
+  Serial.print("ccs811CO2:  ");
+  Serial.println(ccs811CO2);
   Serial.println();
 
 	delay(READ_INTERVAL);
@@ -194,7 +197,8 @@ void setupBMP280()
     Serial.println("Could not find a valid BMP280 sensor, check wiring!");
 }
 
-void readBMP280(float& temperature)
+void readBMP280(float& temperature, float& pressure)
 {
   temperature = bme.readTemperature();
+  pressure = bme.readPressure();
 }
