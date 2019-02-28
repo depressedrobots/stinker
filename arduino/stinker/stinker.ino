@@ -1,20 +1,18 @@
 // this is a conglomeration of several example scripts for the individual sensors of a CMCJU8128.
 //
-// CCS811 code inspired by "Example6_TwentyMinuteTest" by Sparkfun. Copyright:
-// Nathan Seidle @ SparkFun Electronics
-// Marshall Taylor @ SparkFun Electronics
+// CCS811 code inspired Adafruit library examples
 //
 // HDC1080 code inspired by HDC1080_Arduino_Example.ino by Texas Instruments (http://www.ti.com/)
 
 #include <Wire.h>
-#include "SparkFunCCS811.h" // http://librarymanager/All#SparkFun_CCS811
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BMP280.h>
+#include <Adafruit_CCS811.h>
 
 namespace
 {
   // gather data from all sensors every X millis
-  const auto READ_INTERVAL = 10000;
+  const auto READ_INTERVAL = 1000;
   
   // base addresses
   const auto ADDRESS_HDC1080 = 0x40;
@@ -22,8 +20,9 @@ namespace
   const auto ADDRESS_BMP280  = 0x76;
 }
 
-CCS811 myCCS811(ADDRESS_CCS811);
+//CCS811 myCCS811(ADDRESS_CCS811);
 Adafruit_BMP280 bme;
+Adafruit_CCS811 ccs;
 
 void setup()
 {
@@ -41,8 +40,8 @@ void loop()
 	double hdc1080Humidity = -1.;
 	readHDC1080(hdc1080Temp, hdc1080Humidity);
 
-  myCCS811.setEnvironmentalData(static_cast<float>(hdc1080Temp), static_cast<float>(hdc1080Humidity));
-  float ccs811Temp    = -1.f;
+  ccs.setEnvironmentalData(static_cast<uint8_t>(hdc1080Temp), hdc1080Humidity);
+  double ccs811Temp    = -1.f;
   uint16_t ccs811CO2  = 0;
   uint16_t ccs811TVOC = 0;
   readCCS811(ccs811Temp, ccs811CO2, ccs811TVOC);
@@ -120,71 +119,34 @@ void readHDC1080(double& temperature, double& humidity)
 
 void setupCCS811()
 {
-  CCS811Core::status returnCode = myCCS811.begin();
-  Serial.print("CCS811::begin() exited with: ");
-  printDriverError( returnCode );
-  Serial.println();
-  myCCS811.setDriveMode(2); // every 10s
+  if(!ccs.begin())
+    Serial.println("Failed to start CCS811 sensor! Please check your wiring.");
+
+  ccs.setDriveMode(CCS811_DRIVE_MODE_1SEC);
+
+  //calibrate temperature sensor
+  while(!ccs.available()) {}
+  ccs.calculateTemperature();
+  ccs.calculateTemperature();
+    
+  double temp = ccs.calculateTemperature();
+  ccs.setTempOffset(temp - 25.0);
 }
 
-void readCCS811(float& temperature, uint16_t& co2, uint16_t& tvoc)
+void readCCS811(double& temperature, uint16_t& co2, uint16_t& tvoc)
 {
-  if(!myCCS811.dataAvailable())
-  {
-    if (myCCS811.checkForStatusError())
-      printSensorError();
-
+  if(!ccs.available())
     return;
-  }
-
-  myCCS811.readAlgorithmResults();
-  myCCS811.readNTC();
-  temperature = myCCS811.getTemperature();
-  co2 = myCCS811.getCO2();
-  tvoc = myCCS811.getTVOC();
-}
-
-void printDriverError( const CCS811Core::status errorCode )
-{
-  switch ( errorCode )
+    
+  temperature = ccs.calculateTemperature();
+  
+  if(!ccs.readData())
   {
-    case CCS811Core::SENSOR_SUCCESS:
-      Serial.print("SUCCESS");
-      break;
-    case CCS811Core::SENSOR_ID_ERROR:
-      Serial.print("ID_ERROR");
-      break;
-    case CCS811Core::SENSOR_I2C_ERROR:
-      Serial.print("I2C_ERROR");
-      break;
-    case CCS811Core::SENSOR_INTERNAL_ERROR:
-      Serial.print("INTERNAL_ERROR");
-      break;
-    case CCS811Core::SENSOR_GENERIC_ERROR:
-      Serial.print("GENERIC_ERROR");
-      break;
-    default:
-      Serial.print("Unspecified error.");
+    co2  = ccs.geteCO2();
+    tvoc = ccs.getTVOC();
   }
-}
-
-void printSensorError()
-{
-  const auto error = myCCS811.getErrorRegister();
-
-  if ( error == 0xFF ) //comm error
-    Serial.println("Failed to get ERROR_ID register.");
   else
-  {
-    Serial.print("CCS811 Error: ");
-    if (error & 1 << 5) Serial.print("HeaterSupply");
-    if (error & 1 << 4) Serial.print("HeaterFault");
-    if (error & 1 << 3) Serial.print("MaxResistance");
-    if (error & 1 << 2) Serial.print("MeasModeInvalid");
-    if (error & 1 << 1) Serial.print("ReadRegInvalid");
-    if (error & 1 << 0) Serial.print("MsgInvalid");
-    Serial.println();
-  }
+    Serial.println("CCS811 ERROR!");
 }
 
 /************************************************************/
