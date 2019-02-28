@@ -8,6 +8,8 @@
 
 #include <Wire.h>
 #include "SparkFunCCS811.h" // http://librarymanager/All#SparkFun_CCS811
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP280.h>
 
 namespace
 {
@@ -17,9 +19,11 @@ namespace
   // base addresses
   const auto ADDRESS_HDC1080 = 0x40;
   const auto ADDRESS_CCS811  = 0x5A;
+  const auto ADDRESS_BMP280  = 0x76;
 }
 
 CCS811 myCCS811(ADDRESS_CCS811);
+Adafruit_BMP280 bme;
 
 void setup()
 {
@@ -28,6 +32,7 @@ void setup()
 
 	setupHDC1080();
   setupCCS811();
+  setupBMP280();
 }
 
 void loop()
@@ -42,10 +47,15 @@ void loop()
   uint16_t ccs811TVOC = 0;
   readCCS811(ccs811Temp, ccs811CO2, ccs811TVOC);
 
+  float bmp280Temp = -1.f;
+  readBMP280(bmp280Temp);
+
   Serial.print("hdc1080Humidity: ");
   Serial.println(hdc1080Humidity);
 	Serial.print("hdc1080Temp: ");
 	Serial.println(hdc1080Temp);
+  Serial.print("bmp280Temp: ");
+  Serial.println(bmp280Temp);
   Serial.print("ccs811Temp: ");
   Serial.println(ccs811Temp);
   Serial.print("ccs811CO2: ");
@@ -172,4 +182,19 @@ void printSensorError()
     if (error & 1 << 0) Serial.print("MsgInvalid");
     Serial.println();
   }
+}
+
+/************************************************************/
+/* BMP280 functions                                         */
+/************************************************************/
+
+void setupBMP280()
+{
+  if (!bme.begin(ADDRESS_BMP280))
+    Serial.println("Could not find a valid BMP280 sensor, check wiring!");
+}
+
+void readBMP280(float& temperature)
+{
+  temperature = bme.readTemperature();
 }
